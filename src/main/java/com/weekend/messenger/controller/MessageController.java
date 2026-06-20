@@ -2,6 +2,8 @@ package com.weekend.messenger.controller;
 
 import com.weekend.messenger.dto.MessageDTO;
 import com.weekend.messenger.service.MessageService;
+import com.weekend.messenger.service.jms.Producer;
+import com.weekend.messenger.service.jms.TopicPublisher;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -18,11 +20,25 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/message")
 public class MessageController {
 
-    @Autowired
-    MessageService messageService;
+    private final MessageService messageService;
 
-    @Autowired
     private Environment env;
+
+    private final Producer producer;
+
+    private final TopicPublisher publisher;
+
+    public MessageController(
+            Producer producer,
+            TopicPublisher publisher,
+            MessageService messageService,
+            Environment env) {
+        this.publisher = publisher;
+        this.producer = producer;
+        this.messageService = messageService;
+        this.env = env;
+    }
+
 
     @Value("${spring.application.name}") // Use : to provide a default value
     private static String serverPort;
@@ -44,5 +60,22 @@ public class MessageController {
     @GetMapping("/receiveMessage/")
     public ResponseEntity<String> receiveMessage(@RequestParam @NotNull long id){
         return ResponseEntity.ok(messageService.receiveMessage(id));
+    }
+
+    @PostMapping("/sendJmsMessage")
+    public String sendJMSMessage(
+            @RequestParam String text) {
+
+        producer.sendMessage(text);
+        return "Message sent successfully";
+    }
+
+    @PostMapping("/publishJmsMessage")
+    public String publishJmsMessage(
+            @RequestParam String text) {
+
+        publisher.publish(text);
+
+        return "Message published";
     }
 }
